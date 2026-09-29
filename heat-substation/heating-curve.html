@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Опалювальна крива та фільтрація T зовн</title>
+<style>
+  :root{
+    --ink:#1B2830; --muted:#63737F; --line:#D8DEE3; --tint:#F1F4F6;
+    --hot:#C24428; --cold:#1C7293; --gold:#E0A22C; --green:#4F7A4A; --dark:#15222C;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#fff;color:var(--ink);
+       font:16px/1.5 Calibri,"Segoe UI",system-ui,sans-serif}
+  header{background:var(--dark);color:#fff;padding:18px 26px}
+  header h1{margin:0;font:700 24px/1.2 Cambria,Georgia,serif}
+  header p{margin:6px 0 0;color:#9BAAB6;font-size:14px}
+  nav{display:flex;gap:6px;padding:0 26px;background:var(--dark)}
+  nav button{border:0;background:#22323F;color:#C6D2DA;padding:10px 18px;
+    border-radius:8px 8px 0 0;font:600 15px Calibri,sans-serif;cursor:pointer}
+  nav button.on{background:#fff;color:var(--ink)}
+  main{padding:22px 26px 40px}
+  .pane{display:none}.pane.on{display:block}
+  .wrap{display:flex;gap:26px;align-items:flex-start;flex-wrap:wrap}
+  .plot{flex:1 1 560px;min-width:360px}
+  .side{flex:0 0 330px;min-width:300px}
+  canvas{width:100%;height:auto;display:block;border:1px solid var(--line);border-radius:10px}
+  .ctl{margin-bottom:16px}
+  .ctl label{display:flex;justify-content:space-between;font-weight:700;font-size:14px;margin-bottom:5px}
+  .ctl label span{color:var(--cold);font-variant-numeric:tabular-nums}
+  input[type=range]{width:100%;accent-color:#1C7293}
+  select{width:100%;padding:7px;border:1px solid var(--line);border-radius:7px;font:15px Calibri,sans-serif}
+  .row{display:flex;gap:10px;align-items:center;margin:10px 0;font-size:14px}
+  .box{background:var(--tint);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-top:14px}
+  .box h3{margin:0 0 8px;font:700 16px Cambria,Georgia,serif}
+  .box p{margin:0;font-size:14px;color:var(--ink)}
+  .read{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px}
+  .read div{flex:1 1 120px}
+  .read b{display:block;font:700 26px Cambria,Georgia,serif;font-variant-numeric:tabular-nums}
+  .read small{color:var(--muted);font-size:12px}
+  .warn{background:#FBEDE8;border-color:#EFC9BC}
+  .ok{background:#EEF3EC;border-color:#C2D4BD}
+  button.act{border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 14px;
+    font:600 14px Calibri,sans-serif;cursor:pointer}
+  .key{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:8px}
+  .key i{display:inline-block;width:22px;height:3px;vertical-align:middle;margin-right:6px}
+  footer{border-top:1px solid var(--line);margin:0 26px;padding:14px 0 26px;
+    display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;
+    font-size:13px;color:var(--muted)}
+  footer a{color:var(--cold);text-decoration:none;font-weight:600}
+  footer a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<header>
+  <h1>Опалювальна крива</h1>
+  <p>Нахил, паралельний зсув, обмеження та фільтрація сигналу датчика зовнішньої температури</p>
+</header>
+<nav>
+  <button class="on" data-p="p1">Опалювальна крива</button>
+  <button data-p="p2">Фільтрація T зовн</button>
+</nav>
+<main>
+
+<!-- ================= КРИВА ================= -->
+<section class="pane on" id="p1">
+<div class="wrap">
+  <div class="plot"><canvas id="c1" width="1100" height="660"></canvas>
+    <div class="key">
+      <span><i style="background:#C24428"></i>поточна крива</span>
+      <span><i style="background:#D8DEE3"></i>базова (нахил 1,0, зсув 0)</span>
+      <span><i style="background:#1C7293"></i>розрахункова T зворотної</span>
+      <span><i style="background:#4F7A4A"></i>обмеження T min / T max</span>
+    </div>
+  </div>
+  <div class="side">
+    <div class="ctl">
+      <label>Опалювальні прилади</label>
+      <select id="sys">
+        <option value="95,70">95/70 — старий фонд, чавунні радіатори</option>
+        <option value="80,60" selected>80/60 — типові сталеві радіатори</option>
+        <option value="75,65">75/65 — сучасні низькотемпературні</option>
+      </select>
+    </div>
+    <div class="ctl"><label>Нахил кривої <span id="vS">1,00</span></label>
+      <input type="range" id="slope" min="0.4" max="2" step="0.05" value="1"></div>
+    <div class="ctl"><label>Паралельний зсув, °C <span id="vO">0</span></label>
+      <input type="range" id="off" min="-10" max="10" step="1" value="0"></div>
+    <div class="ctl"><label>T зовнішнього повітря, °C <span id="vT">−10</span></label>
+      <input type="range" id="tout" min="-22" max="12" step="1" value="-10"></div>
+    <div class="ctl"><label>Обмеження T min … T max, °C <span id="vL">30 … 90</span></label>
+      <input type="range" id="tmin" min="20" max="50" step="1" value="30">
+      <input type="range" id="tmax" min="60" max="100" step="1" value="90"></div>
+    <div class="read">
+      <div><b id="rSup" style="color:#C24428">—</b><small>уставка T подачі</small></div>
+      <div><b id="rRet" style="color:#1C7293">—</b><small>T зворотної розр.</small></div>
+    </div>
+    <div class="box" id="hint1"><h3>Що спостерігаємо</h3><p>Рухайте нахил при різних T зовн.</p></div>
+  </div>
+</div>
+</section>
+
+<!-- ================= ФІЛЬТРАЦІЯ ================= -->
+<section class="pane" id="p2">
+<div class="wrap">
+  <div class="plot"><canvas id="c2" width="1100" height="620"></canvas>
+    <div class="key">
+      <span><i style="background:#D8DEE3"></i>сигнал датчика T зовн</span>
+      <span><i style="background:#1C7293"></i>після фільтра</span>
+      <span><i style="background:#C24428"></i>уставка T подачі</span>
+      <span><i style="background:#E0A22C"></i>положення клапана</span>
+    </div>
+  </div>
+  <div class="side">
+    <div class="ctl"><label>Шум на датчику, ±°C <span id="vN">2,0</span></label>
+      <input type="range" id="noise" min="0" max="5" step="0.5" value="2"></div>
+    <div class="ctl"><label>Постійна фільтра, хв <span id="vF">0</span></label>
+      <input type="range" id="filt" min="0" max="180" step="10" value="0"></div>
+    <div class="row"><button class="act" id="re2">Перерахувати</button>
+      <span style="color:var(--muted)">12 годин, крок 1 хв</span></div>
+    <div class="read">
+      <div><b id="rTrav" style="color:#E0A22C">—</b><small>сумарний хід приводу, % ходу</small></div>
+    </div>
+    <div class="box" id="hint2"><h3>Що спостерігаємо</h3><p>Поставте фільтр 0 і подивіться на жовту лінію.</p></div>
+  </div>
+</div>
+</section>
+
+<!-- ================= ANTI-WINDUP ================= -->
+</main>
+
+<script>
+/* ---------- утиліти малювання ---------- */
+function Plot(cv, m){
+  const g = cv.getContext('2d'); const W = cv.width, H = cv.height;
+  m = Object.assign({l:78, r:26, t:26, b:58}, m||{});
+  const px = x => m.l + (x - m.x0)/(m.x1 - m.x0)*(W - m.l - m.r);
+  const py = y => H - m.b - (y - m.y0)/(m.y1 - m.y0)*(H - m.t - m.b);
+  g.clearRect(0,0,W,H);
+  g.font = '15px Calibri, sans-serif'; g.textBaseline = 'middle';
+  return {
+    g, px, py, W, H, m,
+    grid(xs, ys, xl, yl){
+      g.strokeStyle='#E8ECEF'; g.lineWidth=1; g.fillStyle='#63737F';
+      ys.forEach(v=>{g.beginPath();g.moveTo(m.l,py(v));g.lineTo(W-m.r,py(v));g.stroke();
+        g.textAlign='right';g.fillText(String(v),m.l-10,py(v));});
+      xs.forEach(v=>{g.textAlign='center';g.fillText(String(v).replace('-','\u2212'),px(v),H-m.b+20);});
+      g.strokeStyle='#B9C3CA';g.beginPath();g.moveTo(m.l,m.t);g.lineTo(m.l,H-m.b);
+      g.lineTo(W-m.r,H-m.b);g.stroke();
+      g.fillStyle='#63737F';g.textAlign='center';
+      if(xl) g.fillText(xl,(m.l+W-m.r)/2,H-14);
+      if(yl){g.save();g.translate(20,(m.t+H-m.b)/2);g.rotate(-Math.PI/2);g.fillText(yl,0,0);g.restore();}
+    },
+    line(pts, col, w, dash){
+      g.strokeStyle=col; g.lineWidth=w||2.5; g.setLineDash(dash||[]);
+      g.beginPath(); pts.forEach((p,i)=> i? g.lineTo(px(p[0]),py(p[1])) : g.moveTo(px(p[0]),py(p[1])));
+      g.stroke(); g.setLineDash([]);
+    },
+    dot(x,y,col,r){g.fillStyle=col;g.beginPath();g.arc(px(x),py(y),r||7,0,7);g.fill();},
+    label(t,x,y,col,al){g.fillStyle=col;g.textAlign=al||'left';g.font='700 15px Calibri, sans-serif';
+      g.fillText(t,px(x),py(y));g.font='15px Calibri, sans-serif';},
+    band(x0,x1,col){g.fillStyle=col;g.fillRect(px(x0),m.t,px(x1)-px(x0),H-m.t-m.b);}
+  };
+}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.pane').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); document.getElementById(b.dataset.p).classList.add('on');
+});
+const $ = id => document.getElementById(id);
+const fx = (v,d)=> v.toFixed(d===undefined?1:d).replace('.',',').replace('-','\u2212');
+
+/* ---------- 1. опалювальна крива ---------- */
+const TR = 20, TOC = -22, NEXP = 1.3;            // T у приміщенні, розрахункова зовнішня, показник приладів
+function curve(tout, sup, ret, slope, off){
+  const phi = Math.max(0, (TR - tout) / (TR - TOC));
+  const dt  = (sup + ret)/2 - TR;                 // середній температурний напір
+  const dd  = sup - ret;                          // перепад у системі
+  const s = TR + slope*(dt*Math.pow(phi, 1/NEXP) + dd*phi/2) + off;
+  const r = TR + slope*(dt*Math.pow(phi, 1/NEXP) - dd*phi/2) + off;
+  return [s, r];
+}
+function draw1(){
+  const [sup, ret] = $('sys').value.split(',').map(Number);
+  const sl = +$('slope').value, of = +$('off').value, to = +$('tout').value;
+  let lo = +$('tmin').value, hi = +$('tmax').value; if(hi < lo+10) hi = lo+10;
+  $('vS').textContent = fx(sl,2); $('vO').textContent = (of>0?'+':'')+of;
+  $('vT').textContent = fx(to,0); $('vL').textContent = lo+' … '+hi;
+
+  const P = Plot($('c1'), {x0:12, x1:-22, y0:20, y1:105});
+  P.grid([10,5,0,-5,-10,-15,-20],[20,30,40,50,60,70,80,90,100],
+         'T зовнішнього повітря, °C','Температура, °C');
+  const A=[],B=[],C=[];
+  for(let t=12;t>=-22;t-=0.5){
+    const c = curve(t,sup,ret,sl,of), b = curve(t,sup,ret,1,0);
+    A.push([t, Math.min(hi, Math.max(lo, c[0]))]);
+    B.push([t, Math.min(hi, Math.max(lo, b[0]))]);
+    C.push([t, Math.min(hi, Math.max(lo-8, c[1]))]);
+  }
+  P.line(B,'#D8DEE3',2.5); P.line(C,'#1C7293',2.5); P.line(A,'#C24428',3.2);
+  P.line([[12,lo],[-22,lo]],'#4F7A4A',1.5,[6,5]);
+  P.line([[12,hi],[-22,hi]],'#4F7A4A',1.5,[6,5]);
+  const c = curve(to,sup,ret,sl,of);
+  const s = Math.min(hi,Math.max(lo,c[0])), r = Math.min(hi,Math.max(lo-8,c[1]));
+  P.line([[to,20],[to,s]],'#63737F',1.2,[4,4]);
+  P.dot(to,s,'#C24428'); P.dot(to,r,'#1C7293');
+  P.label(fx(s,1)+' °C', to-0.8, s+4, '#C24428');
+  $('rSup').textContent = fx(s,1); $('rRet').textContent = fx(r,1);
+
+  const base = curve(to,sup,ret,1,0)[0];
+  const d = s - Math.min(hi,Math.max(lo,base));
+  $('hint1').className = 'box' + (Math.abs(d)>12?' warn':'');
+  $('hint1').innerHTML = '<h3>Що спостерігаємо</h3><p>' +
+    (to > 2
+      ? 'При плюсовій погоді зміна нахилу майже не зрушує уставку — крива тут майже пласка. Саме тому скарги в міжсезоння нахилом не лікуються.'
+      : 'На морозі та сама зміна нахилу дає зсув у ' + fx(Math.abs(d),1) +
+        ' °C. Нахил працює на холодному кінці діапазону, зсув — однаково по всій кривій.') +
+    '</p>';
+}
+['sys','slope','off','tout','tmin','tmax'].forEach(id=>$(id).addEventListener('input',draw1));
+
+/* ---------- 2. фільтрація ---------- */
+let seed = 7; const rnd = ()=> (seed = (seed*16807)%2147483647)/2147483647 - 0.5;
+function draw2(){
+  const nz = +$('noise').value, tf = +$('filt').value;
+  $('vN').textContent = fx(nz,1); $('vF').textContent = tf;
+  const N = 720; seed = 7;                        // 12 год по хвилині
+  const raw=[], flt=[], set=[], vlv=[];
+  let f = -8, prevPos = null, travel = 0;
+  for(let i=0;i<N;i++){
+    const slow = -8 + 5*Math.sin(i/N*Math.PI*1.4);          // повільний хід погоди
+    const t = slow + nz*2*rnd();
+    const a = tf>0 ? 1 - Math.exp(-1/tf) : 1;               // аперіодичний фільтр
+    f += a*(t - f);
+    const s = curve(f,80,60,1,0)[0];
+    const pos = Math.max(0, Math.min(100, (s-30)/55*100));  // умовне положення клапана
+    if(prevPos!==null) travel += Math.abs(pos-prevPos);
+    prevPos = pos;
+    raw.push([i,t]); flt.push([i,f]); set.push([i,s]); vlv.push([i,pos]);
+  }
+  const P = Plot($('c2'), {x0:0, x1:N, y0:-20, y1:100});
+  P.grid([0,120,240,360,480,600,720],[-20,0,20,40,60,80,100],
+         'час, хв','T, °C  /  положення клапана, %');
+  P.line(raw,'#D8DEE3',1.6); P.line(flt,'#1C7293',2.6);
+  P.line(set,'#C24428',2.6); P.line(vlv,'#E0A22C',2);
+  $('rTrav').textContent = Math.round(travel);
+  const bad = travel > 900;
+  $('hint2').className = 'box ' + (bad?'warn':'ok');
+  $('hint2').innerHTML = '<h3>Що спостерігаємо</h3><p>' + (bad
+    ? 'Без фільтра привід відпрацьовує кожен порив вітру на датчику. Сумарний хід за 12 годин — ' +
+      Math.round(travel) + ' % ходу штока; механічний ресурс витрачається даремно, а температура від цього не точніша.'
+    : 'Фільтр згладив шум датчика: уставка змінюється плавно, привід ходить рівно стільки, скільки потрібно за погодою. ' +
+      'Затримка у ' + tf + ' хв для будівлі з τ у десятки годин не має жодного значення.') + '</p>';
+}
+['noise','filt'].forEach(id=>$(id).addEventListener('input',draw2));
+$('re2').onclick = ()=>{seed = Math.floor(Math.random()*1e6)+1; draw2();};
+
+
+draw1(); draw2();
+</script>
+<footer>
+  <a href="../index.html">← Каталог прикладів</a>
+  <span>Автоматизація інженерних систем будівель · CC BY 4.0</span>
+</footer>
+</body>
+</html>

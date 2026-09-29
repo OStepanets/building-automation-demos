@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Інтерактивні приклади · Автоматизація інженерних систем будівель</title>
+<meta name="description" content="Інтерактивні навчальні моделі до курсу «Автоматизація інженерних систем будівель»: опалювальна крива, anti-windup, закон регулювання.">
+<style>
+  :root{--ink:#1B2830;--muted:#63737F;--line:#D8DEE3;--tint:#F1F4F6;
+        --hot:#C24428;--cold:#1C7293;--gold:#E0A22C;--green:#4F7A4A;--dark:#15222C}
+  *{box-sizing:border-box}
+  body{margin:0;background:#fff;color:var(--ink);
+       font:16px/1.55 Calibri,"Segoe UI",system-ui,sans-serif}
+  header{background:var(--dark);color:#fff;padding:34px 26px 30px}
+  .inner{max-width:1080px;margin:0 auto}
+  header h1{margin:0;font:700 30px/1.2 Cambria,Georgia,serif}
+  header p{margin:10px 0 0;color:#9BAAB6;font-size:15px;max-width:760px}
+  header .pipes{display:flex;gap:7px;margin-bottom:18px}
+  header .pipes i{display:block;height:6px;border-radius:3px}
+  main{padding:28px 26px 10px}
+  h2{font:700 20px Cambria,Georgia,serif;margin:30px 0 4px;
+     padding-bottom:8px;border-bottom:1px solid var(--line)}
+  h2 small{display:block;font:400 13.5px Calibri,sans-serif;color:var(--muted);margin-top:5px}
+  .grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));margin-top:18px}
+  .card{border:1px solid var(--line);border-radius:12px;padding:18px 19px;
+        display:flex;flex-direction:column;text-decoration:none;color:inherit;
+        transition:border-color .15s, transform .15s}
+  .card:hover{border-color:var(--cold);transform:translateY(-2px)}
+  .tag{font:700 11px Calibri,sans-serif;letter-spacing:.09em;text-transform:uppercase;margin-bottom:9px}
+  .card h3{margin:0 0 8px;font:700 18px Cambria,Georgia,serif}
+  .card p{margin:0 0 13px;font-size:13.5px;color:var(--ink)}
+  .card .go{margin-top:auto;font-size:13px;font-weight:700;color:var(--cold)}
+  .links{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .links a{font-size:12px;border:1px solid var(--line);border-radius:7px;padding:4px 9px;
+           text-decoration:none;color:var(--muted)}
+  .links a:hover{border-color:var(--cold);color:var(--cold)}
+  .note{background:var(--tint);border:1px solid var(--line);border-radius:12px;
+        padding:16px 19px;margin-top:30px;font-size:14px}
+  .note b{display:block;margin-bottom:6px;font:700 15px Cambria,Georgia,serif}
+  .soon{border-style:dashed;opacity:.65}
+  .soon .go{color:var(--muted)}
+  footer{border-top:1px solid var(--line);margin:34px 26px 0;padding:18px 0 34px;
+         font-size:13px;color:var(--muted)}
+  footer a{color:var(--cold)}
+</style>
+</head>
+<body>
+<header><div class="inner">
+  <div class="pipes"><i style="background:#C24428;width:120px"></i><i style="background:#1C7293;width:74px"></i></div>
+  <h1>Інтерактивні приклади до курсу</h1>
+  <p>Автоматизація інженерних систем будівель · спеціальність 151 «Автоматизація та комп'ютерно-інтегровані технології».
+     Кожна сторінка — самодостатня модель, яка працює у браузері без інтернету: відкрийте, покрутіть повзунки, подивіться, що зміниться.</p>
+</div></header>
+
+<main><div class="inner">
+
+  <h2>Теплові пункти
+    <small>Погодозалежне регулювання опалення, закон регулювання, поведінка на межах діапазону</small></h2>
+
+  <div class="grid">
+    <a class="card" href="heat-substation/heating-curve.html">
+      <span class="tag" style="color:#C24428">Лекція Б · слайд 9</span>
+      <h3>Опалювальна крива</h3>
+      <p>Що насправді робить нахил, а що — паралельний зсув. Чому скарги в міжсезоння нахилом не лікуються.
+         Друга вкладка: як фільтрація сигналу датчика зовнішньої температури впливає на ресурс приводу.</p>
+      <div class="links">
+        <a href="heat-substation/heating-curve.html">крива</a>
+        <a href="heat-substation/heating-curve.html">фільтрація</a>
+      </div>
+      <span class="go">Відкрити →</span>
+    </a>
+
+    <a class="card" href="heat-substation/pid-law.html">
+      <span class="tag" style="color:#1C7293">Лекція Б · слайд 11</span>
+      <h3>Закон регулювання: ПІ чи ПІД</h3>
+      <p>Коли Д-складова справді покращує перехідний процес, а коли лише зношує привід.
+         Вплив шуму датчика, транспортного запізнення та коефіцієнта передачі об'єкта.
+         Окремо — похідна від вимірювання проти похідної від відхилення і роль фільтра.</p>
+      <div class="links">
+        <a href="heat-substation/pid-law.html#ideal">інерційний об'єкт</a>
+        <a href="heat-substation/pid-law.html#noisy">шум на датчику</a>
+        <a href="heat-substation/pid-law.html#dead">велике запізнення</a>
+        <a href="heat-substation/pid-law.html#itp">контур ІТП</a>
+      </div>
+      <span class="go">Відкрити →</span>
+    </a>
+
+    <a class="card" href="heat-substation/anti-windup.html">
+      <span class="tag" style="color:#E0A22C">Лекція Б · слайд 12</span>
+      <h3>Насичення інтегратора і anti-windup</h3>
+      <p>Вихід регулятора впирається в 100 %, а інтегратор продовжує накопичувати.
+         Нижній графік показує те, чого на об'єкті не видно: різницю між розрахованим
+         і фактичним виходом — і перерегулювання, яким за неї платять.</p>
+      <span class="go">Відкрити →</span>
+    </a>
+
+    <div class="card soon">
+      <span class="tag" style="color:#63737F">У планах</span>
+      <h3>Авторитет клапана</h3>
+      <p>Як підбір Kvs «із запасом» перетворює рівнопроцентну характеристику
+         на швидковідкривну і робить контур некерованим.</p>
+      <span class="go">Готується</span>
+    </div>
+  </div>
+
+  <h2>Вентиляція та кондиціювання
+    <small>Розділ курсу в роботі</small></h2>
+  <div class="grid">
+    <div class="card soon">
+      <span class="tag" style="color:#63737F">У планах</span>
+      <h3>Захист калорифера від замерзання</h3>
+      <p>Чому тут логіка протилежна до теплопункту: інерційність об'єкта на два порядки менша.</p>
+      <span class="go">Готується</span>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>Як цим користуватися</b>
+    Сторінки не потребують сервера й інтернету. Кнопкою <i>Code → Download ZIP</i> у репозиторії
+    можна завантажити всю папку й відкривати приклади з флешки — це надійніший варіант для аудиторії,
+    ніж покладатися на мережу. Посилання з міткою сценарію (наприклад <code>#noisy</code>)
+    відкривають сторінку одразу в потрібному стані — зручно для конспектів і QR-кодів.
+  </div>
+
+</div></main>
+
+<footer><div class="inner">
+  Матеріали поширюються за ліцензією
+  <a href="https://creativecommons.org/licenses/by/4.0/deed.uk">CC BY 4.0</a>.
+  Вихідний код і повний опис — у <a href="https://github.com/">репозиторії проєкту</a>.
+</div></footer>
+</body>
+</html>

@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+title: >-
+  Інтерактивні приклади до курсу «Автоматизація
+  інженерних систем будівель»
+message: >-
+  Якщо ви використовуєте ці матеріали, будь ласка,
+  посилайтеся на них так.
+type: software
+authors:
+  - family-names: "Степанець"
+    given-names: "Олександр"
+    affiliation: "КПІ ім. Ігоря Сікорського"
+    orcid: "https://orcid.org/0000-0003-4444-0705"
+repository-code: "https://github.com/OStepanets/building-automation-demos"
+url: "https://OStepanets.github.io/building-automation-demos/"
+abstract: >-
+  Набір інтерактивних веб-моделей для викладання автоматизації
+  інженерних систем будівель: опалювальна крива теплового пункту,
+  вибір закону регулювання, насичення інтегратора та anti-windup.
+keywords:
+  - автоматизація будівель
+  - тепловий пункт
+  - погодозалежне регулювання
+  - ПІД-регулятор
+  - освітні матеріали
+license: CC-BY-4.0

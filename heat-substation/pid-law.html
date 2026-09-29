@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Закон регулювання: ПІ та ПІД</title>
+<style>
+  :root{--ink:#1B2830;--muted:#63737F;--line:#D8DEE3;--tint:#F1F4F6;
+        --hot:#C24428;--cold:#1C7293;--gold:#E0A22C;--green:#4F7A4A;--dark:#15222C}
+  *{box-sizing:border-box}
+  body{margin:0;background:#fff;color:var(--ink);font:16px/1.5 Calibri,"Segoe UI",system-ui,sans-serif}
+  header{background:var(--dark);color:#fff;padding:16px 26px}
+  header h1{margin:0;font:700 23px/1.2 Cambria,Georgia,serif}
+  header p{margin:5px 0 0;color:#9BAAB6;font-size:14px}
+  main{padding:18px 26px 36px}
+  .wrap{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap}
+  .plot{flex:1 1 600px;min-width:380px}
+  .side{flex:0 0 352px;min-width:320px}
+  canvas{width:100%;height:auto;display:block;border:1px solid var(--line);border-radius:10px}
+  canvas+canvas{margin-top:9px}
+  .ctl{margin-bottom:12px}
+  .ctl label{display:flex;justify-content:space-between;font-weight:700;font-size:13.5px;margin-bottom:3px}
+  .ctl label span{color:var(--cold);font-variant-numeric:tabular-nums}
+  input[type=range]{width:100%;accent-color:#1C7293}
+  fieldset{border:1px solid var(--line);border-radius:10px;padding:10px 13px 12px;margin:0 0 12px}
+  legend{font:700 12px Calibri,sans-serif;color:var(--muted);padding:0 6px;letter-spacing:.07em;text-transform:uppercase}
+  .chk{display:flex;align-items:flex-start;gap:8px;margin:7px 0;font-size:13.5px;line-height:1.35}
+  .chk input{accent-color:#4F7A4A;width:16px;height:16px;margin-top:2px;flex:0 0 auto}
+  .pre{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
+  .pre button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 10px;
+    font:600 12.5px Calibri,sans-serif;cursor:pointer}
+  .pre button:hover{background:var(--tint)}
+  .pre button.on{background:var(--dark);color:#fff;border-color:var(--dark)}
+  .box{background:var(--tint);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-top:11px}
+  .box h3{margin:0 0 6px;font:700 15px Cambria,Georgia,serif}
+  .box p{margin:0;font-size:13px}
+  .warn{background:#FBEDE8;border-color:#EFC9BC}
+  .ok{background:#EEF3EC;border-color:#C2D4BD}
+  .read{display:flex;gap:12px;margin-top:11px}
+  .read div{flex:1 1 90px}
+  .read b{display:block;font:700 21px Cambria,Georgia,serif;font-variant-numeric:tabular-nums}
+  .read small{color:var(--muted);font-size:11px;line-height:1.2;display:block}
+  .key{display:flex;gap:15px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-top:7px}
+  .key i{display:inline-block;width:20px;height:3px;vertical-align:middle;margin-right:5px}
+  footer{border-top:1px solid var(--line);margin:0 26px;padding:14px 0 26px;
+    display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;
+    font-size:13px;color:var(--muted)}
+  footer a{color:var(--cold);text-decoration:none;font-weight:600}
+  footer a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<header>
+  <h1>Закон регулювання: що дає Д-складова і чим за неї платять</h1>
+  <p>ISA-форма: u = Kp · [ e + (1/Ti)∫e dt + Td·de/dt ] · вплив шуму, запізнення та коефіцієнта передачі</p>
+</header>
+<main>
+<div class="wrap">
+  <div class="plot">
+    <canvas id="cT" width="1100" height="370"></canvas>
+    <canvas id="cU" width="1100" height="285"></canvas>
+    <div class="key">
+      <span><i style="background:#1C7293"></i>обране налаштування</span>
+      <span><i style="background:#C9D3D9"></i>той самий контур із Td = 0</span>
+      <span><i style="background:#63737F"></i>уставка</span>
+      <span><i style="background:#C24428"></i>межі виходу 0…100 %</span>
+    </div>
+  </div>
+
+  <div class="side">
+    <div class="pre">
+      <button data-pre="ideal">Інерційний, чистий сигнал</button>
+      <button data-pre="noisy">Шум на датчику</button>
+      <button data-pre="dead">Велике запізнення</button>
+      <button data-pre="itp">Контур ІТП</button>
+    </div>
+
+    <fieldset><legend>Регулятор</legend>
+      <div class="ctl"><label>Kp, %/°C <span id="vKp">9,0</span></label>
+        <input type="range" id="kp" min="1" max="20" step="0.5" value="9"></div>
+      <div class="ctl"><label>Ti — час ізодрома, с <span id="vTi">90</span></label>
+        <input type="range" id="ti" min="20" max="600" step="10" value="90"></div>
+      <div class="ctl"><label>Td, с <span id="vTd">0</span></label>
+        <input type="range" id="td" min="0" max="120" step="5" value="0"></div>
+    </fieldset>
+
+    <fieldset><legend>Як роблять Д придатною</legend>
+      <label class="chk"><input type="checkbox" id="dm" checked>
+        <span>похідну брати від вимірюваної величини, а не від відхилення</span></label>
+      <label class="chk"><input type="checkbox" id="df" checked>
+        <span>фільтрувати похідну</span></label>
+      <div class="ctl" style="margin-top:8px"><label>Коефіцієнт фільтра N <span id="vN">10</span></label>
+        <input type="range" id="nf" min="2" max="30" step="1" value="10"></div>
+    </fieldset>
+
+    <fieldset><legend>Об'єкт</legend>
+      <div class="ctl"><label>Коефіцієнт передачі K, °C на % ходу <span id="vK">0,62</span></label>
+        <input type="range" id="kk" min="0.4" max="1.5" step="0.02" value="0.62"></div>
+      <div class="ctl"><label>Постійна часу технології T, с <span id="vT">200</span></label>
+        <input type="range" id="tau" min="40" max="400" step="10" value="200"></div>
+      <div class="ctl"><label>Постійна часу датчика Tд, с <span id="vTs">70</span></label>
+        <input type="range" id="tsn" min="5" max="150" step="5" value="70"></div>
+      <div class="ctl"><label>Транспортне запізнення τ, с <span id="vL">10</span></label>
+        <input type="range" id="lag" min="0" max="180" step="5" value="10"></div>
+      <div class="ctl"><label>Шум датчика, ±°C <span id="vNz">0,00</span></label>
+        <input type="range" id="nz" min="0" max="0.8" step="0.05" value="0"></div>
+    </fieldset>
+
+    <fieldset><legend>Сценарій</legend>
+      <label class="chk"><input type="radio" name="sc" value="step" checked><span>стрибок уставки +3 °C на 2-й хвилині</span></label>
+      <label class="chk"><input type="radio" name="sc" value="dist"><span>збурення: просідання потужності з 6-ї до 12-ї хвилини</span></label>
+    </fieldset>
+
+    <div class="read">
+      <div><b id="rOv" style="color:#1C7293">—</b><small>перерегулювання, °C</small></div>
+      <div><b id="rTs" style="color:#1C7293">—</b><small>час регулювання, с</small></div>
+      <div><b id="rTr" style="color:#E0A22C">—</b><small>хід приводу, % ходу</small></div>
+      <div><b id="rLg" style="color:#4F7A4A">—</b><small>контурне підсилення Kp·K</small></div>
+    </div>
+    <div class="box" id="hint"><h3>Що спостерігаємо</h3><p>—</p></div>
+  </div>
+</div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const fx = (v,d)=> v.toFixed(d===undefined?1:d).replace('.',',').replace('-','\u2212');
+
+function Plot(cv,m){
+  const g=cv.getContext('2d'),W=cv.width,H=cv.height;
+  m=Object.assign({l:74,r:26,t:22,b:44},m||{});
+  const px=x=>m.l+(x-m.x0)/(m.x1-m.x0)*(W-m.l-m.r);
+  const py=y=>H-m.b-(y-m.y0)/(m.y1-m.y0)*(H-m.t-m.b);
+  g.clearRect(0,0,W,H);g.font='14px Calibri, sans-serif';g.textBaseline='middle';
+  return {g,px,py,
+    grid(xs,ys,xl,yl){
+      g.strokeStyle='#E8ECEF';g.lineWidth=1;g.fillStyle='#63737F';
+      ys.forEach(v=>{g.beginPath();g.moveTo(m.l,py(v));g.lineTo(W-m.r,py(v));g.stroke();
+        g.textAlign='right';g.fillText(String(v),m.l-9,py(v));});
+      xs.forEach(v=>{g.textAlign='center';g.fillText(String(v),px(v),H-m.b+17);});
+      g.strokeStyle='#B9C3CA';g.beginPath();g.moveTo(m.l,m.t);g.lineTo(m.l,H-m.b);g.lineTo(W-m.r,H-m.b);g.stroke();
+      g.fillStyle='#63737F';g.textAlign='center';
+      if(xl)g.fillText(xl,(m.l+W-m.r)/2,H-11);
+      if(yl){g.save();g.translate(17,(m.t+H-m.b)/2);g.rotate(-Math.PI/2);g.fillText(yl,0,0);g.restore();}
+    },
+    line(p,c,w,d){g.strokeStyle=c;g.lineWidth=w||2.4;g.setLineDash(d||[]);g.beginPath();
+      p.forEach((q,i)=>i?g.lineTo(px(q[0]),py(q[1])):g.moveTo(px(q[0]),py(q[1])));g.stroke();g.setLineDash([]);},
+    band(a,b,c){g.fillStyle=c;g.fillRect(px(a),m.t,px(b)-px(a),H-m.t-m.b);},
+    txt(t,x,y,c,al){g.fillStyle=c;g.textAlign=al||'left';g.font='700 13.5px Calibri, sans-serif';
+      g.fillText(t,px(x),py(y));g.font='14px Calibri, sans-serif';}
+  };
+}
+
+let seed=12345; const rnd=()=>(seed=(seed*48271)%2147483647)/2147483647-0.5;
+
+function run(p){
+  const dt=1,N=900,T0=50,amb=15;
+  const u0=(T0-amb)/p.K;
+  const buf=new Array(Math.max(1,Math.round(p.lag/dt))).fill(u0);
+  let x1=T0,x2=T0,I=u0/p.Kp,Dst=0,mPrev=T0,ePrev=0,prevU=null,travel=0;
+  const out=[],sp=[],uu=[];
+  for(let i=0;i<N;i++){
+    const t=i*dt;
+    const set=(p.mode==='step'&&t>=120)?T0+p.step:T0;
+    const gain=(p.mode==='dist'&&t>=360&&t<720)?p.K*0.55:p.K;
+    const meas=x2+p.noise*2*rnd();
+    const e=set-meas;
+    const dIn=p.dMeas?-(meas-mPrev)/dt:(e-ePrev)/dt;      // похідна від вимірювання або від відхилення
+    const aD=(p.Td>0&&p.filt)?dt/(p.Td/p.N+dt):1;          // фільтр першого порядку
+    Dst+=aD*(dIn-Dst);
+    const Iu=I+(e/p.Ti)*dt;
+    const ucalc=p.Kp*(e+Iu+p.Td*Dst);
+    const us=Math.max(0,Math.min(100,ucalc));
+    if(us===ucalc||(us===100&&e<0)||(us===0&&e>0)) I=Iu;   // anti-windup: clamping
+    const u=Math.max(0,Math.min(100,p.Kp*(e+I+p.Td*Dst)));
+    buf.push(u); const uLag=buf.shift();
+    x1+=((amb+gain*uLag)-x1)*dt/p.tau;                     // технологія
+    x2+=(x1-x2)*dt/p.tsens;                                // інерційність датчика
+    if(prevU!==null) travel+=Math.abs(u-prevU);
+    prevU=u; mPrev=meas; ePrev=e;
+    out.push([t/60,x2]); sp.push([t/60,set]); uu.push([t/60,u]);
+  }
+  const t0=p.mode==='step'?120:360, fin=p.mode==='step'?T0+p.step:T0;
+  const seg=out.filter(q=>q[0]*60>=t0);
+  const ov=p.mode==='step'?Math.max(0,Math.max(...seg.map(q=>q[1]))-fin)
+                          :Math.max(0,fin-Math.min(...seg.map(q=>q[1])));
+  let ts=null;
+  for(let k=seg.length-1;k>=0;k--){if(Math.abs(seg[k][1]-fin)>0.3){ts=Math.round(seg[Math.min(k+1,seg.length-1)][0]*60-t0);break;}}
+  return {out,sp,uu,ov,ts,travel};
+}
+
+function params(){
+  return {Kp:+$('kp').value,Ti:+$('ti').value,Td:+$('td').value,N:+$('nf').value,
+    dMeas:$('dm').checked,filt:$('df').checked,
+    tau:+$('tau').value,tsens:+$('tsn').value,lag:+$('lag').value,noise:+$('nz').value,
+    K:+$('kk').value,step:3,mode:document.querySelector('input[name=sc]:checked').value};
+}
+
+function draw(){
+  const p=params();
+  $('vKp').textContent=fx(p.Kp); $('vTi').textContent=p.Ti; $('vTd').textContent=p.Td;
+  $('vN').textContent=p.N; $('vT').textContent=p.tau; $('vTs').textContent=p.tsens;
+  $('vL').textContent=p.lag; $('vNz').textContent=fx(p.noise,2);
+  $('vK').textContent=fx(p.K,2);
+
+  seed=12345; const a=run(p);
+  seed=12345; const b=run(Object.assign({},p,{Td:0}));
+
+  const xa=p.mode==='step'?2:6, xb=p.mode==='step'?15:12;
+  const P=Plot($('cT'),{x0:0,x1:15,y0:46,y1:58});
+  P.band(xa,xb,'#FAF4E6');
+  P.grid([0,3,6,9,12,15],[48,50,52,54,56],'час, хв','T, °C');
+  P.line(a.sp,'#63737F',1.7,[7,5]);
+  if(p.Td>0) P.line(b.out,'#C9D3D9',2.3);
+  P.line(a.out,'#1C7293',2.8);
+  P.txt(p.mode==='step'?'стрибок уставки':'просідання потужності',xa+0.15,57.1,'#C24428');
+
+  const Q=Plot($('cU'),{x0:0,x1:15,y0:-6,y1:106,t:16,b:42});
+  Q.band(xa,xb,'#FAF4E6');
+  Q.grid([0,3,6,9,12,15],[0,25,50,75,100],'час, хв','вихід регулятора, %');
+  Q.line([[0,100],[15,100]],'#C24428',1.3,[6,5]);
+  Q.line([[0,0],[15,0]],'#C24428',1.3,[6,5]);
+  if(p.Td>0) Q.line(b.uu,'#C9D3D9',2.2);
+  Q.line(a.uu,'#1C7293',2.5);
+
+  $('rOv').textContent=fx(a.ov,2);
+  $('rTs').textContent=a.ts===null?'—':a.ts;
+  $('rTr').textContent=Math.round(a.travel);
+  $('rLg').textContent=fx(p.Kp*p.K,1);
+
+  const dOv=b.ov-a.ov, dTr=a.travel-b.travel, dTs=(b.ts||900)-(a.ts||900);
+  let cls='box', txt='';
+  if(p.Td===0){
+    txt='Зараз чистий ПІ. Додайте Td і стежте одночасно за двома графіками: верхній покаже якість регулювання, нижній — ціну, яку за неї платить привід.';
+  } else if(p.noise>=0.15 && dTr>400){
+    cls='box warn';
+    txt='Ось ціна похідної на шумному сигналі: хід приводу зріс на '+Math.round(dTr)+' % ходу проти ПІ — це десятки тисяч перемикань за добу. Виграш у перерегулюванні при цьому '+fx(dOv,2)+' °C. Саме тому в контурах ІТП Td лишають нульовим.'+
+      (p.filt?' Зніміть галочку з фільтра — і стане ще гірше.':' Фільтр вимкнено: подивіться на нижній графік.');
+  } else if(p.lag >= p.tau*0.45){
+    cls='box warn';
+    txt='Запізнення '+p.lag+' с співмірне з постійною часу об\u2019єкта. Похідна прогнозує стан, який уже застарів: виграш '+fx(dOv,2)+' °C за перерегулюванням і '+Math.round(dTs)+' с за часом регулювання — майже нічого за такої активності приводу.';
+  } else if(dOv>0.25 || dTs>120){
+    cls='box ok';
+    txt='Ось випадок, де Д справді працює: об\u2019єкт інерційний, сигнал чистий, запізнення мале. Перерегулювання менше на '+fx(dOv,2)+' °C, час регулювання коротший на '+Math.round(dTs)+' с, і привід при цьому ходить '+(dTr<0?'менше на '+Math.round(-dTr):'більше лише на '+Math.round(dTr))+' % ходу.';
+  } else {
+    txt='Різниця з ПІ поки невелика. Збільште Td або інерційність об\u2019єкта — і ефект стане помітним.';
+  }
+  const lg=p.Kp*p.K;
+  if(lg>8){ cls='box warn';
+    txt='Контурне підсилення Kp·K = '+fx(lg,1)+' — забагато для цього об\u2019єкта. Спершу приберіть Kp: жодна Д-складова не врятує контур, у якому завеликий коефіцієнт. '+txt; }
+  else if(lg<1.2){ txt+=' Контурне підсилення Kp·K = '+fx(lg,1)+' — мале: контур млявий, і різниця між законами регулювання майже не проявляється.'; }
+  if(!$('dm').checked && p.Td>0){
+    txt+=' Похідна взята від відхилення: подивіться на нижній графік у момент стрибка уставки — привід отримує удар у межу діапазону, якого при похідній від вимірювання немає.';
+  }
+  $('hint').className=cls;
+  $('hint').innerHTML='<h3>Що спостерігаємо</h3><p>'+txt+'</p>';
+}
+
+const PRE={
+  ideal:{kp:9,ti:90, td:40,nf:10,kk:0.62,tau:200,tsn:70,lag:10, nz:0,   dm:true,df:true},
+  noisy:{kp:9,ti:90, td:40,nf:10,kk:0.62,tau:200,tsn:70,lag:10, nz:0.4, dm:true,df:true},
+  dead: {kp:5,ti:120,td:40,nf:10,kk:0.62,tau:150,tsn:40,lag:120,nz:0,   dm:true,df:true},
+  itp:  {kp:8,ti:90, td:0, nf:10,kk:0.62,tau:150,tsn:60,lag:25, nz:0.25,dm:true,df:true}
+};
+function applyPreset(name){
+  const p=PRE[name]; if(!p) return false;
+  for(const k in p){const el=$(k); if(el.type==='checkbox') el.checked=p[k]; else el.value=p[k];}
+  document.querySelectorAll('.pre button').forEach(x=>x.classList.toggle('on',x.dataset.pre===name));
+  draw(); return true;
+}
+document.querySelectorAll('.pre button').forEach(b=>b.onclick=()=>{
+  applyPreset(b.dataset.pre);
+  history.replaceState(null,'','#'+b.dataset.pre);
+});
+window.addEventListener('hashchange',()=>applyPreset(location.hash.slice(1)));
+['kp','ti','td','nf','kk','tau','tsn','lag','nz'].forEach(id=>$(id).addEventListener('input',draw));
+['dm','df'].forEach(id=>$(id).addEventListener('change',draw));
+document.querySelectorAll('input[name=sc]').forEach(r=>r.addEventListener('change',draw));
+if(!applyPreset(location.hash.slice(1))) draw();
+</script>
+<footer>
+  <a href="../index.html">← Каталог прикладів</a>
+  <span>Автоматизація інженерних систем будівель · CC BY 4.0</span>
+</footer>
+</body>
+</html>
